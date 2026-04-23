@@ -18,3 +18,18 @@
 /public/assets/
 /assets/vendor/
 ###< symfony/asset-mapper ###
+
+/*.log
+/tmp/
+
+/.idea/
+/.vscode/
+/.DS_Store
+/Thumbs.db
+
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+.env
+.env.dev
+.env.test
