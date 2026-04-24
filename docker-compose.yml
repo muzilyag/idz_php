@@ -1,44 +1,37 @@
-version: '3.8'
-
 services:
   php:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
+    container_name: php-app
     volumes:
-      - ./:/var/www/html
-    user: "${UID:-1000}:${GID:-1000}"
-
-  nginx:
-    image: nginx:alpine
+      - .:/var/www/html
     ports:
-      - "8000:80"
-    volumes:
-      - ./:/var/www/html
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - "148:80"
     depends_on:
-      - php
-
-###> doctrine/doctrine-bundle ###
-  database:
-    image: postgres:${POSTGRES_VERSION:-16}-alpine
+      - db
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-app}
-      # You should definitely change the password in production
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
-      POSTGRES_USER: ${POSTGRES_USER:-app}
-    healthcheck:
-      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-app}", "-U", "${POSTGRES_USER:-app}"]
-      timeout: 5s
-      retries: 5
-      start_period: 60s
+      DEFAULT_URI: "http://localhost:18085"
+      DATABASE_URL: "mysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}?serverVersion=8.0"
+
+  db:
+    image: mysql:8.0
+    container_name: mysql-db
+    ports:
+      - "13309:3306"
     volumes:
-      - database_data:/var/lib/postgresql/data:rw
-      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
-      # - ./docker/db/data:/var/lib/postgresql/data:rw
-###< doctrine/doctrine-bundle ###
+      - db_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    ports:
+      - "149:80"
+    environment:
+      PMA_HOST: db
+    depends_on:
+      - db
 
 volumes:
-###> doctrine/doctrine-bundle ###
-  database_data:
-###< doctrine/doctrine-bundle ###
+  db_data:
