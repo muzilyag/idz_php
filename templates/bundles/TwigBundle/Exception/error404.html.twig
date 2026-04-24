@@ -1,0 +1,10 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Ошибка 404{% endblock %}
+
+{% block body %}
+    <section class="container" style="text-align: center; margin-top: 50px;">
+        <h1>Страница не найдена! 404</h1>
+        <a href="{{ path('app_home') }}">Вернуться на главную</a>
+    </section>
+{% endblock %}

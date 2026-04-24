@@ -1,0 +1,31 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Авторизация{% endblock %}
+
+{% block body %}
+    <section class="container">
+        <form action="{{ path('app_login') }}" method="POST">
+            <h2 style="text-align: center;">Вход в систему</h2>
+
+            {% if error %}
+                <div style="color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center;">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <div class="input_field">
+                <label>Логин</label>
+                <input type="text" name="_username" value="{{ last_username }}" required>
+            </div>
+            <div class="input_field">
+                <label>Пароль</label>
+                <input type="password" name="_password" required>
+            </div>
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+            <button type="submit">Войти</button>
+            <p style="text-align: center; font-size: 1.2rem;">
+                Нет аккаунта? <a href="{{ path('app_register') }}" style="color: var(--main); font-weight: bold;">Регистрация</a>
+            </p>
+        </form>
+    </section>
+{% endblock %}

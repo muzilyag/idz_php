@@ -1,0 +1,181 @@
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="{{ asset('map.js') }}" defer></script>
+{% endblock %}
+
+{% block body %}
+    <section class="container">
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="alert {{ label }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endfor %}
+
+        <div class="user-info-bar">
+            {% set roleNames = {'ROLE_ADMIN': 'Админ', 'ROLE_USER': 'Пользователь'} %}
+            {% set userRole = app.user.roles[0]|default('ROLE_USER') %}
+            Вы вошли как: <b>{{ app.user.userIdentifier|default('') }}</b> (Роль: {{ roleNames[userRole]|default('Гость') }}) |
+            <a href="{{ path('app_logout') }}" class="logout-link">Выйти</a>
+        </div>
+
+        <form action="{{ path('app_project_add') }}" method="POST">
+            <h2>Строительный проект</h2>
+            <div class="input_field">
+                <label>Имя проекта</label>
+                <input type="text" name="project_name" placeholder="Название объекта" required />
+            </div>
+            <div class="input_field">
+                <label>Материалы</label>
+                <select name="materials[]" multiple size="4" required>
+                    {% for material in available_materials %}
+                        <option value="{{ material.value }}">{{ material.value }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="input_field">
+                <label>Кол-во рабочих</label>
+                <input type="number" name="workers" placeholder="100" required />
+            </div>
+            <div class="input_field">
+                <label>Бюджет</label>
+                <input type="number" step="0.1" name="budget" placeholder="100000" required />
+            </div>
+            <div class="input_field">
+                <label>Сроки</label>
+                <div>
+                    <input type="date" name="deadline_start" required />
+                    <input type="date" name="deadline_finish" required />
+                </div>
+            </div>
+            <div class="input_field input_map">
+                <div>
+                    <label>Расположение</label>
+                    <input type="text" name="place" id="place_input" placeholder="Город, улица или координаты" required />
+                </div>
+                <div id="map"></div>
+            </div>
+            <button type="submit">Добавить</button>
+        </form>
+    </section>
+
+    <div class="filter-wrapper">
+        <section class="filter">
+            <h3>Фильтр проектов</h3>
+            <form action="{{ path('app_home') }}" method="GET">
+                <input type="text" name="search_name" placeholder="Название проекта..." value="{{ app.request.query.get('search_name') }}" />
+                <input type="text" name="search_place" placeholder="Место стройки..." value="{{ app.request.query.get('search_place') }}" />
+                <button type="submit">Найти</button>
+                <a href="{{ path('app_home') }}">Сбросить</a>
+            </form>
+        </section>
+    </div>
+
+    <section id="projects-table" class="db_table">
+        <div class="table-header">
+            <h2>Список проектов в базе данных</h2>
+
+            <form action="{{ path('app_import_excel') }}" method="POST" enctype="multipart/form-data" class="import-form">
+                <input type="file" name="excel_file" accept=".xlsx, .xls" required class="file-input">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="allow_duplicates" value="1"> Дубликаты
+                </label>
+                <button type="submit" class="btn-import">Импорт Excel</button>
+            </form>
+
+            <div class="export-actions">
+                <a href="{{ path('app_export_csv') }}" class="action_btn btn-csv">CSV</a>
+                <a href="{{ path('app_export_excel') }}" class="action_btn btn-excel">Excel</a>
+                <a href="{{ path('app_export_pdf') }}" class="action_btn btn-pdf">PDF</a>
+            </div>
+        </div>
+
+        {% if projects is empty %}
+            <p class="empty-table-msg">Записей пока нет</p>
+        {% else %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Название</th>
+                        <th>Материалы</th>
+                        <th>Рабочие</th>
+                        <th>Бюджет</th>
+                        <th>Начало работ</th>
+                        <th>Конец работ</th>
+                        <th>Место</th>
+                        <th>Добавлено</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                        {% set isOwner = app.user and project.owner == app.user %}
+                        {% set isAdmin = is_granted('ROLE_ADMIN') %}
+                        {% set canEdit = isOwner or isAdmin %}
+                        {% set isEditing = app.request.query.get('edit') == project.id %}
+
+                        <tr>
+                            {% if isEditing and canEdit %}
+                                <form action="{{ path('app_project_update') }}" method="POST">
+                                    <input type="hidden" name="id" value="{{ project.id }}">
+                                    <td>{{ loop.index }}</td>
+                                    <td><input type="text" name="project_name" value="{{ project.projectName }}" required></td>
+                                    <td>
+                                        <select name="materials[]" multiple size="3" required>
+                                            {% for material in available_materials %}
+                                                <option value="{{ material.value }}" {% if material.value in project.materials %}selected{% endif %}>
+                                                    {{ material.value }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="workers_count" value="{{ project.workersCount }}" required></td>
+                                    <td><input type="number" step="0.01" name="budget" value="{{ project.budget }}" required></td>
+                                    <td><input type="date" name="deadline_start" value="{{ project.deadlineStart ? project.deadlineStart|date('Y-m-d') : '' }}" required></td>
+                                    <td><input type="date" name="deadline_finish" value="{{ project.deadlineFinish ? project.deadlineFinish|date('Y-m-d') : '' }}" required></td>
+                                    <td><input type="text" name="place" value="{{ project.place }}" required></td>
+                                    <td>{{ project.createAt|date('d-m-Y H:i') }}</td>
+                                    <td>
+                                        <button type="submit" class="action_btn btn_save">Ок</button>
+                                        <a href="{{ path('app_home') }}#projects-table" class="action_btn btn_cancel">Х</a>
+                                    </td>
+                                </form>
+                            {% else %}
+                                <td>{{ loop.index }}</td>
+                                <td>{{ project.projectName }}</td>
+                                <td>{{ project.materials }}</td>
+                                <td>{{ project.workersCount }}</td>
+                                <td>{{ project.budget|number_format(2, '.', ' ') }} руб</td>
+                                <td>{{ project.deadlineStart ? project.deadlineStart|date('Y-m-d') : '-' }}</td>
+                                <td>{{ project.deadlineFinish ? project.deadlineFinish|date('Y-m-d') : '-' }}</td>
+                                <td>{{ project.place }}</td>
+                                <td>{{ project.createAt|date('d-m-Y H:i:s') }}</td>
+                                <td>
+                                    {% if canEdit %}
+                                        <form action="{{ path('app_project_delete') }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="id" value="{{ project.id }}">
+                                            <button type="submit" class="action_btn btn_del" onclick="return confirm('Удалить?')">Del</button>
+                                        </form>
+                                        <a href="{{ path('app_home', {'edit': project.id}) }}#projects-table" class="action_btn btn_edit">Edit</a>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+{% endblock %}

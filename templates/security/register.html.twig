@@ -1,0 +1,30 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block body %}
+    <section class="container">
+        <form action="{{ path('app_register') }}" method="POST">
+            <h2 style="text-align: center;">Регистрация</h2>
+
+            {% if error %}
+                <div style="color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 10px; border-radius: 5px; margin-bottom: 15px; text-align: center;">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <div class="input_field">
+                <label>Логин</label>
+                <input type="text" name="username" required>
+            </div>
+            <div class="input_field">
+                <label>Пароль</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit">Зарегистрироваться</button>
+            <p style="text-align: center; font-size: 1.2rem;">
+                Уже есть аккаунт? <a href="{{ path('app_login') }}" style="color: var(--main); font-weight: bold;">Войти</a>
+            </p>
+        </form>
+    </section>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Доступ запрещен{% endblock %}
+
+{% block body %}
+    <section class="container" style="text-align: center; margin-top: 50px;">
+        <h2>Ошибка 403: Доступ запрещен</h2>
+        <a href="{{ path('app_home') }}">Вернуться на главную</a>
+    </section>
+{% endblock %}
